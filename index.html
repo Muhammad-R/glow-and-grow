@@ -25,7 +25,7 @@ const SUPABASE_URL = "https://wwukksodjmrxhrsordga.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3dWtrc29kam1yeGhyc29yZGdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMjc2MTQsImV4cCI6MjA5NDgwMzYxNH0.8u5QxStxhVzKvpqE88c9TVQkWnc6fV9Bf3Hb3DTANnI";
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const USERS = { me: "me", her: "her" };
+const USERS = { sadiya: "sadiya", muhammad: "muhammad" };
 
 // ─── Workout Data ────────────────────────────────────────────────────────────
 
@@ -215,7 +215,7 @@ const motivationalQuotes = [
 // ─── Main App ────────────────────────────────────────────────────────────────
 
 function App() {
-  const [activeUser, setActiveUser] = useState(USERS.me);
+  const [activeUser, setActiveUser] = useState(USERS.sadiya);
   const [loading, setLoading] = useState(true);
 
   const [level, setLevel] = useState("beginner");
@@ -326,7 +326,7 @@ function App() {
             <div style={{ fontSize: 26, fontWeight: "bold", color: "#fff", letterSpacing: 1 }}>✨ Glow & Grow ✨</div>
           </div>
           <div style={{ display: "flex", background: "rgba(255,255,255,0.15)", borderRadius: 20, padding: 3 }}>
-            {[{ key: USERS.me, label: "Me" }, { key: USERS.her, label: "Her" }].map(u => (
+            {[{ key: USERS.sadiya, label: "Sadiya" }, { key: USERS.muhammad, label: "Muhammad" }].map(u => (
               <button key={u.key} onClick={() => switchUser(u.key)} style={{
                 padding: "6px 18px", borderRadius: 16, border: "none", cursor: "pointer",
                 fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold",
