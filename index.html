@@ -233,8 +233,11 @@ function App() {
   const [mealLog, setMealLog] = useState([]);
   const [mealName, setMealName] = useState("");
   const [mealCal, setMealCal] = useState("");
+  const [calEstimates, setCalEstimates] = useState([]);
+  const [searching, setSearching] = useState(false);
 
   const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const CAL_GOALS = { sadiya: 1200, muhammad: 1500 };
 
   const loadData = useCallback(async (userKey) => {
     setLoading(true);
@@ -334,7 +337,25 @@ function App() {
 
   const todayMeals = mealLog.filter(m => m.date === today);
   const todayCalIn = todayMeals.reduce((s, m) => s + m.calories, 0);
-  const CAL_GOAL = 1500;
+  const CAL_GOAL = CAL_GOALS[activeUser] || 1500;
+
+  const searchCalories = async () => {
+    if (!mealName.trim()) return;
+    setSearching(true);
+    setCalEstimates([]);
+    try {
+      const res = await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(mealName)}&pageSize=6&api_key=DEMO_KEY`);
+      const data = await res.json();
+      const results = (data.foods || []).map(food => {
+        const e = food.foodNutrients?.find(n => n.nutrientId === 1008 || n.nutrientName === "Energy");
+        const cal = e ? Math.round(e.value) : null;
+        const serving = food.servingSize ? `${food.servingSize}${food.servingSizeUnit}` : "100g";
+        return { name: food.description, cal, serving, brand: food.brandOwner };
+      }).filter(r => r.cal !== null && r.cal > 0).slice(0, 5);
+      setCalEstimates(results);
+    } catch {}
+    setSearching(false);
+  };
 
   const startWeight = weightLog.length > 0 ? weightLog[0].weight : null;
   const currentWeight = weightLog.length > 0 ? weightLog[weightLog.length - 1].weight : null;
@@ -557,17 +578,47 @@ function App() {
           <div style={{ background: "#fff", borderRadius: 16, padding: 16, boxShadow: "0 2px 12px rgba(233,30,99,0.08)", marginBottom: 16 }}>
             <div style={{ fontWeight: "bold", fontSize: 14, color: "#9c27b0", marginBottom: 12 }}>📝 Log a Meal</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <input
-                value={mealName} onChange={e => setMealName(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && addMeal()}
-                placeholder="What did you eat? (e.g. Grilled chicken)"
-                style={{ padding: "10px 14px", borderRadius: 12, border: "2px solid #f0d0e0", fontSize: 14, fontFamily: "Georgia, serif", color: "#3d2b2b", outline: "none" }}
-              />
+              {/* Food name + estimate button */}
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  value={mealName}
+                  onChange={e => { setMealName(e.target.value); setCalEstimates([]); }}
+                  onKeyDown={e => e.key === "Enter" && (calEstimates.length === 0 ? searchCalories() : addMeal())}
+                  placeholder="What did you eat?"
+                  style={{ flex: 1, padding: "10px 14px", borderRadius: 12, border: "2px solid #f0d0e0", fontSize: 14, fontFamily: "Georgia, serif", color: "#3d2b2b", outline: "none" }}
+                />
+                <button onClick={searchCalories} disabled={searching || !mealName.trim()} style={{
+                  padding: "10px 14px", borderRadius: 12, border: "2px solid #f0d0e0", background: "#fff",
+                  color: "#e91e63", fontWeight: "bold", fontSize: 12, cursor: "pointer", fontFamily: "Georgia, serif",
+                  opacity: !mealName.trim() ? 0.4 : 1, whiteSpace: "nowrap",
+                }}>{searching ? "…" : "🔍 Estimate"}</button>
+              </div>
+
+              {/* Calorie suggestions dropdown */}
+              {calEstimates.length > 0 && (
+                <div style={{ border: "2px solid #f0d0e0", borderRadius: 12, overflow: "hidden" }}>
+                  {calEstimates.map((r, i) => (
+                    <div key={i} onClick={() => { setMealCal(String(r.cal)); setCalEstimates([]); }} style={{
+                      padding: "10px 14px", cursor: "pointer", background: "#fff",
+                      borderBottom: i < calEstimates.length - 1 ? "1px solid #fce4ec" : "none",
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                    }}>
+                      <div>
+                        <div style={{ fontSize: 13, color: "#3d2b2b", fontWeight: "bold" }}>{r.name.length > 40 ? r.name.slice(0, 40) + "…" : r.name}</div>
+                        <div style={{ fontSize: 11, color: "#bbb", marginTop: 1 }}>per {r.serving}{r.brand ? ` · ${r.brand}` : ""}</div>
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: "bold", color: "#e91e63", marginLeft: 12, flexShrink: 0 }}>{r.cal} kcal</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Calories + Add */}
               <div style={{ display: "flex", gap: 8 }}>
                 <input
                   type="number" value={mealCal} onChange={e => setMealCal(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && addMeal()}
-                  placeholder="Calories"
+                  placeholder="Calories (or pick above)"
                   style={{ flex: 1, padding: "10px 14px", borderRadius: 12, border: "2px solid #f0d0e0", fontSize: 14, fontFamily: "Georgia, serif", color: "#3d2b2b", outline: "none" }}
                 />
                 <button onClick={addMeal} style={{ padding: "10px 20px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #e91e63, #9c27b0)", color: "#fff", fontWeight: "bold", fontSize: 14, cursor: "pointer", fontFamily: "Georgia, serif" }}>+ Add</button>
@@ -755,7 +806,7 @@ function App() {
           </div>
           <div style={{ marginTop: 20, background: "linear-gradient(135deg, #e91e63, #9c27b0)", borderRadius: 16, padding: "18px 20px", color: "#fff", textAlign: "center", boxShadow: "0 4px 20px rgba(233,30,99,0.25)" }}>
             <div style={{ fontSize: 18, marginBottom: 6 }}>🎯 Daily Calorie Goal</div>
-            <div style={{ fontSize: 36, fontWeight: "bold" }}>1,400 – 1,600</div>
+            <div style={{ fontSize: 36, fontWeight: "bold" }}>{CAL_GOAL.toLocaleString()}</div>
             <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>kcal/day for steady weight loss</div>
             <div style={{ fontSize: 11, opacity: 0.6, marginTop: 8 }}>Always consult a doctor for personalized targets</div>
           </div>
